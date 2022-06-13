@@ -91,7 +91,7 @@ class Analyzer():
         s, x, _, _ = Bresenham(system, p1, p2)
         return x, s
 
-    def band_diagram(self, location, fig=None):
+    def band_diagram(self, location, ax=None):
         """
         Compute the band diagram between two points defining a line. Display a
         plot if fig is None.
@@ -117,13 +117,11 @@ class Analyzer():
             X, sites = self.line(self.sys, p1, p2)
 
         show = False
-        if fig is None:
+        if ax is None:
             fig = plt.figure()
-            show = True
+            ax = fig.add_subplot(111)
 
         # add axis to figure
-        ax = fig.add_subplot(111)
-
         vt = self.sys.scaling.energy
         X = X * 1e4  # in um
 
@@ -132,11 +130,9 @@ class Analyzer():
         l3, = ax.plot(X, -vt * (self.v[sites] + self.sys.bl[sites]), lw=2, color='k', ls='-')
         l4, = ax.plot(X, -vt * (self.v[sites] + self.sys.bl[sites] + self.sys.Eg[sites]), lw=2, color='k', ls='-')
 
-        fig.legend([l1, l2], [r'$\mathregular{E_{F_n}}$',\
+        ax.legend([l1, l2], [r'$\mathregular{E_{F_n}}$',\
                               r'$\mathregular{E_{F_p}}$'])
 
-
-        ax.set_xlabel(r'Position [$\mathregular{\mu m}$]')
         ax.set_ylabel('Energy [eV]')
 
         if show:
