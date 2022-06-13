@@ -1,4 +1,3 @@
-from cProfile import label
 import sesame
 import numpy as np
 import json
