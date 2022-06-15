@@ -15,3 +15,4 @@ pytz==2022.1
 scipy==1.8.1
 shlib==1.4.0
 six==1.16.0
+ipympl==0.9.1

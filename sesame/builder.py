@@ -325,6 +325,17 @@ class Builder():
         params = defect(s, location, f, E, sigma_e, sigma_h, transition, dl)
         self.defects_list.append(params)
 
+    def set_doping_profile(self, doping_profile):
+        """
+        Set the doping profile of the system.
+        The doping_profile is an array of the same length as the grid.
+        The elements of doping_profile is the difference N_d - N_a between the donor and acceptor concentration
+        This function will overwrite the existing rho vector
+        """
+        if not len(doping_profile) == len(self.rho):
+            raise ValueError('The length of the doping_profile is not equal to the length of the system grid')
+        self.rho = doping_profile / self.scaling.density
+
     def doping_profile(self, density, location):
         s, _ = get_sites(self, location)
         self.rho[s] = self.rho[s] + density / self.scaling.density
@@ -360,6 +371,7 @@ class Builder():
             region.
         """
         self.doping_profile(-density, location)
+
 
     def generation(self, f, args=[]):
         """

@@ -1,5 +1,8 @@
+import pandas as pd
 import sesame
 import numpy as np
+import scipy.constants as cts
+from scipy.interpolate import interp1d
 import json
 import matplotlib.pyplot as plt
 from shlib import to_path, mkdir
@@ -13,36 +16,26 @@ gzip_dir = to_path(root, 'gzip')
 mkdir(gzip_dir)
 
 # OPTIONS
-# This example support simulation on abrupt p-n junctions and contain code for plotting band diagram, electrostatic potential, electric field, space charge density, current components and electron density.
-# The plots enabled in this dictionary will be created with shared x-axis
-PLOT = {
-    'BAND_DIAGRAM' : True,
-    'ELECTROSTATIC_POTENTIAL' : True,
-    'ELECTRIC_FIELD' : True,
-    'SPACE_CHARGE_DENSITY' : True,
-    'MINORITY_CARRIER_DENSITY' : False,
-    'NORMALIZED_CURRENT_COMPONENTS' : False,
-}
 # Set this variable to plot hole and electron drift/diffusion current components
 # Will be plotted in separate figures
-PLOT_CURRENT_COMPONENTS = False
+PLOT_CURRENT_COMPONENTS = True
 
 # Doping
 # The simulations are performed on abrupt, homogenous p-n junctions with constant doping concentration on either side of the junction. Modify the variables nA and nD to change the doping concentration.
-nA = 1e15 # [cm^-3]
-nD = 1.4e15 # [cm^-3]
+nA = 1e14 # [cm^-3]
+nD = 1e14 # [cm^-3]
 
 # Bias voltage
 # This is the bias voltage across the p-n junction
-bias_voltage = 0
+bias_voltage = 0.0
 
 # CONSTANTS
 T = 300 # Temp [K]
-kB = 8.62e-5 # Boltzmann [eV/K]
-q = 1.6e-19 # Electron charge [C]
+kB_si = cts.k
+q = cts.e
 
 # Create grid and initialize system
-L = 8e-4 # length of the system in the x-direction [cm]
+L = 10e-4 # length of the system in the x-direction [cm]
 junction = L/2 # extent of the junction from the left contact [cm]
 n_points = 10000 # Number of grid points. Increasing the number of points give better accuracy, but will increase simulation time
 x = np.linspace(0, L, n_points)
@@ -108,13 +101,19 @@ n = az.electron_density((p1, p2))
 n = n * sys.scaling.density
 p = az.hole_density((p1, p2))
 p = p * sys.scaling.density
-rho = az.get_space_charge_density((p1, p2))
+Delta_n = interp1d(x, n)(xp0_pos)
+Delta_p = interp1d(x, p)(xn0_pos)
+
 
 # Calculate current components
-mu_n = sys.mu_e
-mu_p = sys.mu_h
-Dn = kB*T*mu_n # Einstein rel
-Dp = kB*T*mu_p # Einstein rel
+mu_n = sys.mu_e*sys.scaling.mobility
+mu_p = sys.mu_h*sys.scaling.mobility
+Dn = kB_si*T/q*mu_n # Einstein rel
+Dp = kB_si*T/q*mu_p # Einstein rel
+tau_n = np.mean(sys.tau_e*sys.scaling.time)
+tau_p = np.mean(sys.tau_h*sys.scaling.time)
+L_n = np.sqrt(Dn*tau_n)
+L_p = np.sqrt(Dp*tau_p)
 
 # Calculate electron current
 dx = (p2[0] - p1[0])/len(v)
@@ -128,65 +127,6 @@ Jp = Jp_drift + Jp_diff
 
 
 
-
-
-
-# PLOTTING
-num_plots = sum(PLOT.values())
-fig, axs = plt.subplots(nrows=num_plots, sharex=True)
-plt_index = num_plots - 1
-
-
-
-if PLOT['SPACE_CHARGE_DENSITY']:
-    ax = axs[plt_index]
-    plt_index -= 1
-    ax.plot(x*1e4, rho, label=r'$\rho(x)$')
-    ax.set_ylabel(r'Space charge [C/cm^3]')
-    ax.legend()
-
-# E field
-if PLOT['ELECTRIC_FIELD']:
-    ax = axs[plt_index]
-    plt_index -= 1
-    ax.plot(x*1e4, E, label=r'$\mathcal{E}(x)$')
-    ax.set_ylabel('Electric field [V/cm]')
-    ax.legend()
-
-if PLOT['ELECTROSTATIC_POTENTIAL']:
-    ax = axs[plt_index]
-    plt_index -= 1
-    ax.set_ylabel('Potential [V]')
-    ax.plot(x*1e4, v, label='V(x)')
-    ax.legend()
-
-if PLOT['MINORITY_CARRIER_DENSITY']:
-    ax = axs[plt_index]
-    plt_index -= 1
-    # Plot n_p
-    ax.plot(x[x<xp0_pos]*1e4, n[x<xp0_pos], label=r'$n(x_p)$')
-    # Plot p_n
-    ax.plot(x[x>xn0_pos]*1e4, p[x>xn0_pos], label=r'$p(x_n)$')
-    ax.set_ylabel(r'Carrier concentration [cm$^{-3}$]')
-    ax.legend()
-
-
-if PLOT['NORMALIZED_CURRENT_COMPONENTS'] and bias_voltage > 0:
-    ax = axs[plt_index]
-    plt_index -= 1
-    ax.plot(x*1e4, Jn/(Jp+Jn), label='Electron current')
-    ax.plot(x*1e4, Jp/(Jp+Jn), label='Hole current')
-    ax.set_ylabel('Normalized current')
-    ax.legend()
-
-
-if PLOT['BAND_DIAGRAM']:
-    ax = axs[plt_index]
-    plt_index -= 1
-    az.band_diagram((p1, p2), ax=ax)
-
-
-
 if PLOT_CURRENT_COMPONENTS:
     scale = 1e6
     plt.figure()
@@ -195,7 +135,9 @@ if PLOT_CURRENT_COMPONENTS:
     plt.plot(x*1e4, Jn*scale, label='total electron current')
     plt.plot(x*1e4, (Jp+Jn)*scale, label='total current')
     plt.xlabel(r'Position [$\mu$m]')
-    plt.ylabel('Current [uA]')
+    plt.ylabel('Current density [uA/cm2]')
+    plt.axvline(x=xn0_pos*1e4, ls='--', label=r'$x_{n0}$', c='grey')
+    plt.axvline(x=xp0_pos*1e4, ls='--', label=r'$x_{p0}$', c='grey')
     plt.legend()
 
     plt.figure()
@@ -203,17 +145,34 @@ if PLOT_CURRENT_COMPONENTS:
     plt.plot(x*1e4, Jp_diff*scale, label='hole diffusion current')
     plt.plot(x*1e4, Jp*scale, label='total hole current')
     plt.plot(x*1e4, (Jp+Jn)*scale, label='total current')
+    plt.axvline(x=xn0_pos*1e4, ls='--', label=r'$x_{n0}$', c='grey')
+    plt.axvline(x=xp0_pos*1e4, ls='--', label=r'$x_{p0}$', c='grey')
     plt.xlabel(r'Position [$\mu$m]')
-    plt.ylabel('Current [uA]')
+    plt.ylabel('Current density [uA/cm2]')
     plt.legend()
 
 
 
-# # jn = az.electron_current(location=(p1, p2))
 
-# # # plt.plot(n1d[len(n1d)//2:len(n1d)//2+20])
-# # plt.plot(jn)
-axs[-1].set_xlabel(r'Position [$\mathregular{\mu m}$]')
-fig.suptitle(r'$V_{bias}=$' + f'{bias_voltage}V')
+
+# Diffusion currents at the edge of the depletion region
+# Use interpolation to get current at exact pos
+Jp0 = interp1d(x, Jp_diff)(xn0_pos)
+Jn0 = interp1d(x, Jn_diff)(xp0_pos)
+
+data = {
+    'Jp0': f'{Jp0*1e3} mA/cm2',
+    'Jp0_hat': f'{np.mean(q*Dp/L_p * Delta_p)*1e3} mA/cm2',
+    'Jn0': f'{Jn0*1e3} mA/cm2',
+    'Jn0_hat': f'{np.mean(q*Dn/L_n * Delta_n)*1e3} mA/cm2',
+    # 'Dn': np.mean(Dn),
+    # 'Dp': np.mean(Dp),
+    # 'tau_n': np.mean(tau_n),
+    # 'tau_p': np.mean(tau_p),
+    # 'L_n': np.mean(L_n),
+    # 'L_p': np.mean(L_p),
+}
+df = pd.Series(data=data)
+print(df)
+
 plt.show()
-
