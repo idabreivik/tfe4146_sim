@@ -9,14 +9,19 @@ Open a terminal window and navigate into a directory where you want to run the p
 
     cd /path/to/your/work/directory
 
-Clone this repository
+Clone this repository.
+With ssh:
 
     git clone git@github.com:fredrief/tfe4146_sim.git
+
+or using the web url:
+
+    git clone https://github.com/fredrief/tfe4146_sim.git
 
 Install the required dependencies
 
     cd tfe4146_sim
-    pip install -r requirements.tex
+    pip install -r requirements.txt
 
 ## Usage
 
