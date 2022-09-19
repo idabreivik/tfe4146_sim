@@ -5,6 +5,9 @@ This project builds on the python package [Sesame](https://sesame.readthedocs.io
 For simplicity, only the required part of the sesame source code is copied into the repository, such that no installation of sesame is required. Please refer to the [Sesame](https://sesame.readthedocs.io/en/latest/index.html#) documentation for a detailed description of the simulation back-end.
 
 ## Installation
+Open a terminal window and navigate into a directory where you want to run the python simulations, e.g.:
+
+    cd /path/to/your/work/directory
 
 Clone this repository
 
