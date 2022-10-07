@@ -1,4 +1,9 @@
-from cProfile import label
+# Handle relative import
+import os
+import sys
+module_path = os.path.abspath(os.path.join('..'))
+if module_path not in sys.path:
+    sys.path.append(module_path)
 import sesame
 import numpy as np
 import json
@@ -31,32 +36,32 @@ p1 = (0, 0)
 p2 = (L, 0)
 
 # Initialize the system
-sys = sesame.Builder(x, T=T)
+system = sesame.Builder(x, T=T)
 
 # Add material properties
 with open('materials/si.json', 'r') as f:
         si = json.load(f)
-sys.add_material(si)
+system.add_material(si)
 
 # Add dopants
 n_region = lambda pos: (pos >= junction)
 p_region = lambda pos: (pos < junction)
 
 # Add the donors
-sys.add_donor(nD, n_region)
+system.add_donor(nD, n_region)
 # Add the acceptors
-sys.add_acceptor(nA, p_region)
+system.add_acceptor(nA, p_region)
 
 # Define Neutral contacts
-sys.contact_type('Ohmic', 'Ohmic')
+system.contact_type('Ohmic', 'Ohmic')
 
 # Define the surface recombination velocities for electrons and holes [cm/s]
 Sn_left, Sp_left, Sn_right, Sp_right =  1e7, 1e7, 1e7, 1e7  # cm/s
 # Sn_left, Sp_left, Sn_right, Sp_right =  1e9,1e9,1e9,1e9
-sys.contact_S(Sn_left, Sp_left, Sn_right, Sp_right)
+system.contact_S(Sn_left, Sp_left, Sn_right, Sp_right)
 
-j = sesame.IVcurve(sys, voltages, str(to_path(gzip_dir, 'j_eq')))
-j = j * sys.scaling.current
+j = sesame.IVcurve(system, voltages, str(to_path(gzip_dir, 'j_eq')))
+j = j * system.scaling.current
 
 plt.plot(voltages, j,'-o')        # plot j-v curve
 plt.xlabel('Voltage [V]')

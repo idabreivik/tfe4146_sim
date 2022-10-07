@@ -1,3 +1,9 @@
+# Handle relative import
+import os
+import sys
+module_path = os.path.abspath(os.path.join('..'))
+if module_path not in sys.path:
+    sys.path.append(module_path)
 import pandas as pd
 import sesame
 import numpy as np
@@ -46,13 +52,13 @@ p1 = (0, 0)
 p2 = (L, 0)
 
 # Initialize the system
-sys = sesame.Builder(x, T=T)
+system = sesame.Builder(x, T=T)
 
 # Add material properties
 # The parameters of Silicon is placed in this json file
 with open('materials/si.json', 'r') as f:
         si = json.load(f)
-sys.add_material(si)
+system.add_material(si)
 
 # Add dopants
 n_region = lambda pos: (pos >= junction)
@@ -60,27 +66,27 @@ p_region = lambda pos: (pos < junction)
 
 
 # Add the donors
-sys.add_donor(nD, n_region)
+system.add_donor(nD, n_region)
 # Add the acceptors
-sys.add_acceptor(nA, p_region)
+system.add_acceptor(nA, p_region)
 
 
 # Define Neutral contacts
-sys.contact_type('Neutral', 'Neutral')
+system.contact_type('Neutral', 'Neutral')
 
 # Define the surface recombination velocities for electrons and holes [cm/s]
 Sn_left, Sp_left, Sn_right, Sp_right =  1e7, 1e7, 1e7, 1e7  # cm/s
 # Sn_left, Sp_left, Sn_right, Sp_right =  1e9,1e9,1e9,1e9
-sys.contact_S(Sn_left, Sp_left, Sn_right, Sp_right)
+system.contact_S(Sn_left, Sp_left, Sn_right, Sp_right)
 
 voltages = np.array([bias_voltage])
-j = sesame.IVcurve(sys, voltages, str(to_path(gzip_dir, 'j_eq')))
-j = j * sys.scaling.current
+j = sesame.IVcurve(system, voltages, str(to_path(gzip_dir, 'j_eq')))
+j = j * system.scaling.current
 
 # Load results
-sys, result = sesame.load_sim(
+system, result = sesame.load_sim(
     to_path(gzip_dir, 'j_eq_0.gzip'))  # load data file
-az = sesame.Analyzer(sys,result)                   # get Sesame analyzer object
+az = sesame.Analyzer(system,result)                   # get Sesame analyzer object
 
 
 # Calculations
@@ -89,7 +95,7 @@ E = az.get_e_field((p1, p2))
 
 # Calculate depletion region
 E0 = np.max(np.abs(E))
-epsilon = sys.epsilon[0] * 8.85e-14
+epsilon = system.epsilon[0] * 8.85e-14
 xp0 = E0 * epsilon/(q*nA)
 xn0 = E0 * epsilon/(q*nD)
 
@@ -98,20 +104,20 @@ xn0_pos = junction + xn0
 
 # Electron and hole density
 n = az.electron_density((p1, p2))
-n = n * sys.scaling.density
+n = n * system.scaling.density
 p = az.hole_density((p1, p2))
-p = p * sys.scaling.density
+p = p * system.scaling.density
 Delta_n = interp1d(x, n)(xp0_pos)
 Delta_p = interp1d(x, p)(xn0_pos)
 
 
 # Calculate current components
-mu_n = sys.mu_e*sys.scaling.mobility
-mu_p = sys.mu_h*sys.scaling.mobility
+mu_n = system.mu_e*system.scaling.mobility
+mu_p = system.mu_h*system.scaling.mobility
 Dn = kB_si*T/q*mu_n # Einstein rel
 Dp = kB_si*T/q*mu_p # Einstein rel
-tau_n = np.mean(sys.tau_e*sys.scaling.time)
-tau_p = np.mean(sys.tau_h*sys.scaling.time)
+tau_n = np.mean(system.tau_e*system.scaling.time)
+tau_p = np.mean(system.tau_h*system.scaling.time)
 L_n = np.sqrt(Dn*tau_n)
 L_p = np.sqrt(Dp*tau_p)
 
